@@ -1,0 +1,234 @@
+############ EVERYTHING NEEDS TO BE COPY PASTED OUT OF THIS CURSED R MARKDOWN FILE BECAUSE THE IMAGES SUCK!############ 
+
+
+---
+title: "Study Room Data - EGR KDL"
+author: "Kelsea & Ryan"
+date: "12/10/2022"
+output: word_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r set_options, message=FALSE, include=FALSE, paged.print=FALSE}
+#Loading in all appropriate libraries for the report 
+library(tidyverse)
+library(janitor) # the tabyl function 
+library(scales) #functions for creating breaks and labels for axes and color scales
+library(ggthemes)
+library(readxl)
+library(stringr) # manipulating strings
+source("http://pcwww.liv.ac.uk/~william/R/crosstab.r") #Library for crosstab function
+library(expss) # Creating tables 
+library(writexl)
+library(RColorBrewer)
+library(lubridate) #Formatting dates and times
+
+#Code to knit the file even if there are errors 
+knitr::opts_chunk$set(error = TRUE)
+```
+
+
+#Data Wrangling 
+```{r include=FALSE}
+#Loading in the excel file omitting all missing values 
+
+study <- read_excel("Data/Example Data.xlsx") %>%
+  na.omit()
+
+#Using the factor() function to chagne the varaibles Time and Room_Avaliable from their default character variables into factor varaibles. I specifiy the levels of each factor to ensure the proper order for the graph legends later on
+#Encoding the variable Time as a factor with three levels "M", "A", "E" soon to represent "morning" "afternoon" and "evening 
+study$Time <- factor(study$Time, levels = c("M", "A", "E"))
+
+study$Room_Avaliable <- factor(study$Room_Avaliable, levels = c("yes", "no"))
+
+#Getting a brief look at our data set to make sure it looks good 
+head(study)
+
+#Applying labels to the factors of variable time to be applied later on in the tabyl() to create our cross tab  
+study1 = apply_labels(study, 
+                     Time = c("Afternoon" = "A",
+                              "Evening" = "E",
+                              "Morning" = "M"))
+```
+
+
+```{r echo=FALSE}
+#Function from the stringr library that will count all instances of 'yes' and 'no' observations from the variable Room_Avaliable 
+y <-str_count(study$Room_Avaliable, "yes")
+n <-str_count(study$Room_Avaliable, "no")
+
+#Using the summarize function to create a data frame that highlights some important summary statistics to be included in the report  
+m <-study %>%
+  summarise(yes = sum(y), no = sum(n), total = yes+no, Success_Rate = yes/total,
+            min = min(Numer_Of_People),
+            max = max(Numer_Of_People),
+            MeanG = mean(Numer_Of_People),
+            MeanC = (total/18),
+            sd = sd(Numer_Of_People),
+            Median = median(Numer_Of_People)) 
+print(m)
+
+summary(study$Numer_Of_People)
+```
+
+
+#Cross tabulation illustrating the success rate of patrons getting a study room by the time of day
+```{r echo=FALSE}
+#this code is creating a cross-tabulation table from the study1 data frame and adding row and column totals, as well as a new column with the success rate calculated from the yes and Total columns. The success rate column is also formatted as a percentage.
+
+tab <- tabyl(study1, Time, Room_Avaliable) %>%
+  adorn_totals(c("row", "col")) %>%
+  mutate(Success_rate = yes/Total) %>%
+  adorn_pct_formatting(,,,Success_rate)
+
+print(tab)
+```
+
+
+#Cross tabulation investigating success rate of getting a study by individual day 
+```{r echo=FALSE}
+# The as.Date() function is used to convert the orginal character date column into a date vector. It takes a character vector as input and returns a date vector with the same length. 
+study$newdate <- as.Date(study$Date)
+
+#Formats new date function into the format 11/07/2022 (month, day, 4 digit year)
+study$newdate <- format(study$newdate, "%m/%d/%Y")
+
+study <- study %>% mutate(days = weekdays(Date))
+
+
+tab <- tabyl(study, newdate, Room_Avaliable, days) %>%
+  adorn_totals(c("row", "col")) %>%
+  mutate(Success_rate = yes/Total) %>%
+  adorn_pct_formatting(,,,Success_rate) 
+ 
+print(tab)
+
+#Desired output 
+
+#      Time yes no Total Success_rate
+# Afternoon  82 42   124        66.1%
+#   Evening  14  3    17        82.4%
+#   Morning  61 11    72        84.7%
+#     Total 157 56   213        73.7%
+```
+
+
+#Boxplot 
+```{r}
+study %>% 
+  ggplot(aes(x = Numer_Of_People)) + 
+  geom_boxplot()
+```
+
+
+#Pie plot showing patron requests for study room based on the size of their group
+```{r}
+# Calculate percentages
+totals <- study %>% count(Numer_Of_People)
+
+totals$percent_NOP <- totals$n / sum(totals$n) * 100
+
+totals$Numer_Of_People <- as.character(totals$Numer_Of_People)
+
+# Create the pie chart
+ggplot(totals, aes(x = "", y = percent_NOP, fill = Numer_Of_People)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = paste0(round(percent_NOP), "%")), 
+            position = position_jitterdodge(jitter.width = 0.2, dodge.width = .8), 
+            size = 4) +
+  #geom_text(aes(label = paste0(round(percent_NOP), "%")), position = position_stack(vjust = 0.5)) +
+  scale_fill_brewer(palette = "Dark2", name = "Number of People per Group") +
+  labs(
+    title = "Study Rooms Requests by Group Size"
+  ) +
+  theme_void()
+```
+
+
+
+#Below is a data visualization (histogram) showing patron requests for study room based on the size of their group
+```{r echo=FALSE}
+size <- study %>% 
+  ggplot(aes(x = Numer_Of_People)) + 
+  geom_histogram(stat = "count", position = "dodge2", color = "black", fill = "#1F78B4", width = .6) +
+  ggtitle("Study Rooms Requests by Group Size") +
+  xlab("Group Size (Number of People per Group)") +
+  ylab("Observations") +
+  labs(caption = "Figure 1.1")  +
+  scale_y_continuous(
+    breaks = seq(0, 190, by = 10),
+    limits = c(0, 190)) +
+  theme_clean() +
+  theme(legend.position = c(0.6, 0.6),
+        legend.direction = "horizontal",
+        legend.title = element_text(size = 10.5), 
+        legend.text = element_text(size = 10))
+size
+```
+
+
+#Below is a data visualization (histogram) showing whether a patron was able to get study based on the size of their group
+```{r echo=FALSE}
+success <- study %>% ggplot(aes(x=Numer_Of_People, fill = Room_Avaliable)) + 
+  geom_histogram(stat= "count" , position = "dodge2", color="black") +
+  xlab('Group Size (Number of People per Group)') +
+  ylab("Observations") +
+  ggtitle("Success of Getting a Study Room by Group Size") +
+  labs(caption = "Figure 1.2") +
+  scale_fill_manual(name= "Room Available?", labels= c("Yes", "No"), values=c("#66A61E", "#7570B3")) +
+  scale_y_continuous(
+    breaks = seq(0, 145, by = 10)) + 
+  theme_clean() +
+  theme(legend.position = c(.7, .6), 
+        plot.title = element_text(size = 12)) 
+
+success
+```
+
+
+#Below we see a data visualization (histogram) illustrating study room requests by the time of day. 
+```{r echo=FALSE}
+time <- study %>% ggplot(aes(x=Numer_Of_People, fill = Time)) + 
+  geom_histogram(stat= "count" , position = "dodge2", color="black") +
+  xlab("Group Size (Number of People per Group)") +
+  ylab("Observaitons") +
+  ggtitle("Study Rooms Requests by Time") +
+  labs(caption = "Figure 1.3")+
+  scale_fill_brewer(labels= c("Morning", "Afternoon", "Evening"), palette = "Dark2") +
+  scale_y_continuous(
+    breaks = seq(0, 110, by = 5),
+    limits = c(0, 105)) +
+  theme_clean() +
+  theme(legend.position = c(.6, .6),
+        legend.direction = "horizontal",
+        legend.title = element_text(size = 10.5), 
+        legend.text = element_text(size = 10))
+
+time
+
+#ggsave(one, file = "C:/Users/Ryan/Coding Projects/KDL Project/Quarterly Reports/Graphs/testingsy.png")
+```
+
+
+
+
+```{r eval=FALSE, include=FALSE}
+###############NEED TO GO THROUGH AND RE COPY ALL GRAPHS INTO WORD DOC ###############
+#ggsave(one, file = "C:/Users/Ryan/Coding Projects/KDL Project/Quarterly Reports/Graphs/visitorsweeklarge.png")
+
+
+#Code to export table to an excel sheet!
+
+#write_xlsx(tab, "C:/Users/Ryan/Coding Projects/KDL Project/Study Rooms/Figs/Hi.xlsx")
+
+
+
+#Displays all colorblind friendly colors in brewer library
+display.brewer.all(colorblindFriendly = TRUE)   
+
+#Finding and then displaying the code names for specific colorblind friendly colors to use in the following data visualizations 
+display.brewer.pal(8, "Paired")
+brewer.pal(8, "Paired")
+```
