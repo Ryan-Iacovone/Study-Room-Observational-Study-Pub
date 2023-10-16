@@ -2,8 +2,8 @@
 
 
 ---
-title: "Study Room Data - EGR KDL"
-author: "Kelsea & Ryan"
+title: "Study Room Data - Library"
+author: "Ryan Iacovone"
 date: "12/10/2022"
 output: word_document
 editor_options: 
