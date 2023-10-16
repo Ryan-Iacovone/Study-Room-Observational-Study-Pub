@@ -20,7 +20,7 @@ knitr::opts_chunk$set(error = TRUE)
 ## ---- echo=TRUE---------------------------------------------------------------------------------------------------------------------------------------------------
 #Loading in the data file from local home drive and omitting all missing values 
 
-study <- read_excel("C:/Users/Ryan/Coding Projects/Public Forks/Study Rooms pub/Data/Example Data.xlsx") %>%
+study <- read_excel("C:/Users/Ryan/Coding Projects/Public Forks/PUB Studies/Data/Example Data.xlsx") %>%
   na.omit()
 
 #Encoding the vector Time as a factor with three levels "M", "A", "E" soon to represent "morning" "afternoon" and "evening 

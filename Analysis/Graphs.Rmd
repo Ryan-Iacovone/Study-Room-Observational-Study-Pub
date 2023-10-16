@@ -1,6 +1,6 @@
 ```{r}
 #taking in all the libraries and data wrangling from this initial R file 
-source("C:/Users/Ryan/Coding Projects/Public Forks/Study Rooms pub/Wrangling.R")
+source("C:/Users/Ryan/Coding Projects/Public Forks/PUB Studies/Wrangling.R")
 ```
 
 #boxplot 
